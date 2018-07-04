@@ -5,13 +5,10 @@ type term = (*EConstInt of int
           | EVar of string
           | EFunctor of string * (term list)
 
-
-type predicate = string * (term list)
-
-type goal = predicate list
+type goal = term list
 
 (* factは長さ0のリストを持つruleにする *)
-type rule = predicate * goal
+type rule = term * goal
 
 type command =
   | CRule of rule
@@ -44,24 +41,19 @@ let rec print_terms terms = match terms with
     (print_term x;
      print_terms xs)
 
-let print_predicate (name, terms) =
-  (print_string name;
-   print_string "(";
-   print_terms terms;
-   print_string ")")
 
 let rec print_goal g = match g with
   | [] -> ()
   | x::(y::xs) ->
-    (print_predicate x;
+    (print_term x;
      print_string ", ";
      print_goal (y::xs))
   | x::xs ->
-    (print_predicate x;
+    (print_term x;
      print_goal xs)
 
 let print_rule (p, g) =
-  ((print_predicate p);
+  ((print_term p);
    (print_string " :- ");
    (print_goal g))
 
@@ -69,5 +61,3 @@ let print_cmd cmd =((match cmd with
   | CRule r -> print_rule r
   | CAsk  g -> print_goal g);
    print_string ".")
-
-

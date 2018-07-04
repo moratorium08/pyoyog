@@ -31,8 +31,8 @@ goal:
 ;
 
 predicate:
-  | pname OPAR terms CPAR            { ($1, $3) }
-  | pname                           { ($1, [])}
+  | pname OPAR terms CPAR            { EFunctor($1, $3) }
+  | pname                           { EConstSym($1) }
 ;
 
 terms:
