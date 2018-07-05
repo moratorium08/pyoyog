@@ -27,3 +27,4 @@ val print_substs: (TySyntax.tyvar * TySyntax.ty) list -> unit
  * apply the substitution to the type
  *)
 val ty_subst : subst -> TySyntax.ty -> TySyntax.ty
+val ty_subst_goal : subst -> TySyntax.ty list -> TySyntax.ty list

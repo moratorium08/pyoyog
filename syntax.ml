@@ -1,4 +1,3 @@
-
 type term = (*EConstInt of int
           | EConstStr of string*)
           | EConstSym of string
@@ -9,6 +8,8 @@ type goal = term list
 
 (* factは長さ0のリストを持つruleにする *)
 type rule = term * goal
+
+type solution = (string * term) list
 
 type command =
   | CRule of rule
@@ -56,6 +57,16 @@ let print_rule (p, g) =
   ((print_term p);
    (print_string " :- ");
    (print_goal g))
+
+let rec print_solution s = match s with
+  | [] -> ()
+  | (name, t) :: xs ->
+    (print_string name;
+     print_string " = ";
+     print_term t;
+     print_string "\n";
+     print_solution xs
+    )
 
 let print_cmd cmd =((match cmd with
   | CRule r -> print_rule r

@@ -4,6 +4,14 @@ exception TyError
 type subst = (tyvar * ty) list
 type constraints = (ty * ty) list
 
+let debug_flag = false
+
+let debug s =
+  if debug_flag then
+    (print_string s; print_string "\n")
+  else
+    ()
+
 let rec print_substs l = match l with
   | [] -> ()
   | (var, t)::xs ->
@@ -45,6 +53,13 @@ let rec ty_subst sigma t = (*print_string "ty_subst"*) match t with
       | x::xs -> (ty_subst sigma x) :: (inner xs)
     in TyFun (s, inner tl)
 
+let rec ty_subst_goal sigma g = match g with
+  | [] -> []
+  | x::xs ->
+    let t = ty_subst sigma x in
+    let ts = ty_subst_goal sigma xs in
+    t ::ts
+
 let rec ty_subst_c c sub = (*(print_int (List.length c)); (print_string "\n");*) match c with
   | [] -> []
   | (t1, t2) :: xs -> (((ty_subst [sub] t1), (ty_subst [sub] t2)) ::
@@ -78,12 +93,12 @@ let rec _ty_unify l =(*print_string "ty_unify"*) match l with
     | (t, TyVar v) -> if occurance_check t v then
         ((_ty_unify(ty_subst_c xs (v, t))) @ [(v, t)])
       else
-        ((print_string "occurance check\n");
+        ((debug "occurance check");
         (raise TyError))
     | (TyFun (s1, tl1), TyFun(s2, tl2))
       when s1 = s2 && (List.length tl1) = (List.length tl2) ->
       _ty_unify ((List.combine tl1 tl2) @ xs)
-    | _ -> (raise TyError)
+    | _ -> (debug "no match"; raise TyError)
     )
 
 let rec ty_unify_inner l = match l with

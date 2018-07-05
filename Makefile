@@ -2,6 +2,8 @@ SOURCES = syntax.ml lexer.mll parser.mly tySyntax.ml constraintSolver.ml rules.m
 RESULT  = main
 
 YFLAGS = -v
+OCAMLFLAGS = -g
+
 
 all: byte-code byte-code-library
 

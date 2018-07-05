@@ -24,13 +24,13 @@ let rec term2ty env t =
   let rec inner env t = match t with
     | EConstSym s -> (TySym s, env)
     | EVar s -> (match lookup env s with
-        | Some x -> (TyVar x, [])
+        | Some x -> (TyVar x, env)
         | None ->
           let v = new_tyvar () in
           (TyVar v, (s, v) :: env))
     | EFunctor(s, tl) ->
       (let rec inner2 env tl = (match tl with
-        | [] -> raise TyError
+        | [] -> (raise TyError)
         | [x] ->
           let (v, env) = (inner env x) in
           ([v], env)
@@ -46,16 +46,53 @@ let rec term2ty env t =
   inner env t
 
 let rec goal2tgoal env g = match g with
-  | [] -> ([], [])
+  | [] -> ([], env)
   | x::xs ->
-    let (t, env) = (term2ty env x)  in
-    let (ts, env) = (goal2tgoal env xs) in
-    (t::ts, env)
+    let (t, env') = (term2ty env x)  in
+    let (ts, env'') = (goal2tgoal env' xs) in
+    (t::ts, env'')
 
-let rule2trule (t, g) =
-  let (t, env) = term2ty [] t in
-  let (g, _) = goal2tgoal env g in
-  (t, g)
+let rec print_env env = match env with
+  | [] -> ()
+  | (n, i) :: xs ->
+    (print_string n;
+     print_string " = ";
+     print_int i)
+
+let rec inv_assoc env v = match env with
+  | [] -> raise TyError
+  | (s, w)::xs -> if v = w then s else inv_assoc xs v
+
+let rec ty2term env t = match t with
+  | TySym s ->  EConstSym s
+  | TyVar v -> EVar (inv_assoc env v)
+  | TyFun (s, args) ->
+      (let rec inner env tl = (match tl with
+        | [] -> []
+        | x::xs ->
+          let v = ty2term env x in
+          let vl = inner env xs in
+          v :: vl
+        ) in
+       let vl = inner env args in
+       EFunctor(s, vl)
+      )
+
+let rec tgoal2goal env g = match g with
+  | [] -> []
+  | x::xs ->
+    try
+        (let t = (ty2term env x)  in
+        let ts = (tgoal2goal env xs) in
+        t::ts)
+    with
+        TyError ->
+        let ts = (tgoal2goal env xs) in ts
+
+let rule2trule env (t, g) =
+  let (t, env) = term2ty env t in
+  let (g, env) = goal2tgoal env g in
+  ((t, g), env)
 
 
 let rec print_type t = match t with
@@ -65,11 +102,19 @@ let rec print_type t = match t with
     (print_string "VAR<";
      print_int v;
      print_string ">")
-  | TyFun (_, tl) ->
+  | TyFun (s, tl) ->
     let rec inner tl = match tl with
       | [] -> ()
-      | x::xs -> (print_type x; (inner xs))
-    in inner tl
+      | x::xs ->
+        (print_type x;
+         print_string ", ";
+         (inner xs))
+    in (
+      print_string s;
+      print_string "(";
+      inner tl;
+      print_string ")"
+    )
 
 let rec print_tgoal g = match g with
   | [] -> ()
