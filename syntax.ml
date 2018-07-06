@@ -58,15 +58,19 @@ let print_rule (p, g) =
    (print_string " :- ");
    (print_goal g))
 
-let rec print_solution s = match s with
+let print_solution s =
+  let rec inner s = match s with
   | [] -> ()
   | (name, t) :: xs ->
     (print_string name;
      print_string " = ";
      print_term t;
      print_string "\n";
-     print_solution xs
+     inner xs
     )
+  in match s with
+  | [] -> print_string "true"
+  | n -> inner n
 
 let print_cmd cmd =((match cmd with
   | CRule r -> print_rule r

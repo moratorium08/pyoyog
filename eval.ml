@@ -50,7 +50,7 @@ let gen_queue l =
 
 
 type result = Fail
-            | Found of solution * goal * ((tgoal * subst) Queue.t)
+            | Found of solution * ((tgoal * subst) Queue.t)
             | Rule
 
 let rec gen_solution env theta = match env with
@@ -59,6 +59,12 @@ let rec gen_solution env theta = match env with
     let s = ty2term env (ty_subst theta (TyVar v)) in
     (name, s) :: (gen_solution xs theta)
 
+let search_solution rls env q =
+    match search rls q with
+    | None -> (rls, env, Fail)
+    | Some theta ->
+      let sol = gen_solution env theta in
+      (rls, env, Found (sol, q))
 
 let eval_cmd rls env cmd = match cmd with
   | CRule r ->
@@ -67,10 +73,4 @@ let eval_cmd rls env cmd = match cmd with
   | CAsk g ->
     let (tg, env) = goal2tgoal [] g in
     let q = gen_queue tg in
-    match search rls q with
-    | None -> (rls, env, Fail)
-    | Some theta ->
-      let tmp = ty_subst_goal theta tg in
-      let goal = (tgoal2goal env tmp) in
-      let sol = gen_solution env theta in
-      (rls, env, Found (sol, goal, q))
+    search_solution rls env q
