@@ -4,7 +4,7 @@ exception TyError
 type subst = (tyvar * ty) list
 type constraints = (ty * ty) list
 
-let debug_flag = true
+let debug_flag = false
 
 let debug s =
   if debug_flag then

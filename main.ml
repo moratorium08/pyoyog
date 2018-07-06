@@ -12,17 +12,28 @@ let rec read_eval_print rls env =
    (print_string "\n");
     let (rls', env', r) = eval_cmd rls env cmd in
     (match r with
-     | Fail -> print_string "false"
-     | Rule -> print_string "true"
+     | Fail -> print_string "false\n"
+     | Rule -> print_string "true\n"
      | Found (s, q) ->
        ((print_solution s);
-         let rec inner q = match search_solution rls' env' q with
-           | (_, _, Fail) -> print_string "false"
-           | (_, _, Rule) -> print_string "true"
-           | (_, _, Found(s, q)) ->
-             ((print_solution s);
-             (inner q))
-         in inner q
+          (let c = read_line () in
+           if c = ";" then
+             (let rec inner q = match search_solution rls' env' q with
+                 | (_, _, Fail) -> print_string "false\n"
+                 | (_, _, Rule) -> print_string "true\n"
+                 | (_, _, Found(s, q)) ->
+                   ((print_solution s);
+                  (let c = read_line () in
+                   if c = ";" then
+                    inner q
+                   else
+                     ()
+                   ))
+              in inner q
+             )
+           else
+             ()
+          )
        )
     );
     (print_string "\n");
