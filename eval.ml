@@ -3,7 +3,7 @@ open TySyntax
 open ConstraintSolver
 open Rules
 
-let eval_goal rls g q sigma =
+let eval_goal rls env g q sigma =
   let rules = rls.rules in
   if List.length g = 0 then
     true
@@ -20,7 +20,7 @@ let eval_goal rls g q sigma =
       match l with
       | [] -> ()
       | x::xs ->
-        let (s, tg) = x in
+        let ((s, tg), env) = rule2trule [] x in
         try
           let theta = unify [(t, s)] in
           let rec subst_goal g = match g with
@@ -33,16 +33,16 @@ let eval_goal rls g q sigma =
         TyError -> (loop xs)
     in (loop rules; false)
 
-let rec search rls q =
+let rec search rls env q =
   if Queue.is_empty q
   then
     None
   else
     let (g, theta) = Queue.take q in
-    if eval_goal rls g q theta then
+    if eval_goal rls env g q theta then
       Some theta
     else
-      search rls q
+      search rls env q
 
 let gen_queue l =
   let q = Queue.create () in
@@ -60,7 +60,7 @@ let rec gen_solution env theta = match env with
     (name, s) :: (gen_solution xs theta)
 
 let search_solution rls env q =
-    match search rls q with
+    match search rls env q with
     | None -> (rls, env, Fail)
     | Some theta ->
       let sol = gen_solution env theta in
@@ -68,8 +68,7 @@ let search_solution rls env q =
 
 let eval_cmd rls env cmd = match cmd with
   | CRule r ->
-    let (g, env) = rule2trule env r in
-    (add g rls, env, Rule)
+    (add r rls, env, Rule)
   | CAsk g ->
     let (tg, env) = goal2tgoal [] g in
     let q = gen_queue tg in

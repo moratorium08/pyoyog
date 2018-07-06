@@ -1,6 +1,6 @@
-open TySyntax
+open Syntax
 
-type rules = {rules: trule list; length: int}
+type rules = {rules: rule list; length: int}
 
 let make () = {rules= [];
                length=0}
