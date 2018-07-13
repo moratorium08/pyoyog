@@ -9,11 +9,20 @@ type ty =
   | TyVar of tyvar
   | TyFun of string * (ty list)
 
-type tgoal = ty list
+type tynot =
+  | TNone
+  | TNot
+  | TDoubleNot
+
+type tpredicate =
+  tynot * ty
+
+type tgoal = tpredicate list
 type trule = ty * tgoal
 type env = (string * tyvar) list
 
 exception TyError
+exception NotCannotBeIncluded
 
 let rec term2ty env t =
   let rec lookup env x =
@@ -45,12 +54,6 @@ let rec term2ty env t =
   in
   inner env t
 
-let rec goal2tgoal env g = match g with
-  | [] -> ([], env)
-  | x::xs ->
-    let (t, env') = (term2ty env x)  in
-    let (ts, env'') = (goal2tgoal env' xs) in
-    (t::ts, env'')
 
 let rec print_env env = match env with
   | [] -> ()
@@ -78,22 +81,42 @@ let rec ty2term env t = match t with
        EFunctor(s, vl)
       )
 
-let rec tgoal2goal env g = match g with
+
+(*let rec tgoal2goal env g = match g with
   | [] -> []
   | x::xs ->
     try
-        (let t = (ty2term env x)  in
+        (let t = (tpredicate2predicate env x)  in
         let ts = (tgoal2goal env xs) in
         t::ts)
     with
         TyError ->
-        let ts = (tgoal2goal env xs) in ts
+        let ts = (tgoal2goal env xs) in ts*)
+
+let predicate2tpredicate env p =
+  let rec inner p cnt = match p with
+  | PNot p -> (inner p (cnt + 1))
+  | PPredicate t ->
+    let (t, env) = (term2ty env t) in
+    match cnt with
+    | 0 -> ((TNone, t), env)
+    | n when n mod 2 = 0 ->
+      ((TDoubleNot, t), env)
+    | n ->
+      ((TNot, t), env)
+  in inner p 0
+
+let rec goal2tgoal env g = match g with
+  | [] -> ([], env)
+  | x::xs ->
+    let (t, env') = (predicate2tpredicate env x)  in
+    let (ts, env'') = (goal2tgoal env' xs) in
+    (t::ts, env'')
 
 let rule2trule env (t, g) =
   let (t, env) = term2ty env t in
   let (g, env) = goal2tgoal env g in
   ((t, g), env)
-
 
 let rec print_type t = match t with
   | TySym s ->
@@ -116,9 +139,19 @@ let rec print_type t = match t with
       print_string ")"
     )
 
+let rec print_tpredicate p = match p with
+  | (TNone, t) ->
+    (print_type t)
+  | (TNot, t) ->
+    (print_string "\\+";
+     print_type t)
+  | (TDoubleNot, t) ->
+    (print_string "\\+\\+";
+     print_type t)
+
 let rec print_tgoal g = match g with
   | [] -> ()
-  | x::xs -> (print_type x; print_tgoal xs)
+  | x::xs -> (print_tpredicate x; print_tgoal xs)
 
 let rec print_trule (t, g) =
   (print_type t;

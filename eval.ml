@@ -3,6 +3,7 @@ open TySyntax
 open ConstraintSolver
 open Rules
 
+
 let eval_goal rls env g q sigma =
   let rules = rls.rules in
   if List.length g = 0 then
@@ -15,23 +16,28 @@ let eval_goal rls env g q sigma =
      * 代入のペアをqに追加する。
      * 一つも見つからなければfail
      *)
-    let t = List.hd g in
-    let rec loop l =
-      match l with
-      | [] -> ()
-      | x::xs ->
-        let ((s, tg), env) = rule2trule [] x in
-        try
-          let theta = unify [(t, s)] in
-          let rec subst_goal g = match g with
-            | [] -> []
-            | t::ts -> (ty_subst theta t) :: (subst_goal ts)
-          in
-          (Queue.push ((subst_goal tg), compose theta sigma) q;
-           loop xs)
-        with
-        TyError -> (loop xs)
-    in (loop rules; false)
+    let (nflag, t)  = List.hd g in
+    match nflag with
+    | TNone
+    | TDoubleNot ->
+        (let rec loop l =
+          match l with
+          | [] -> ()
+          | x::xs ->
+            let ((s, tg), env) = rule2trule [] x in
+            try
+              let theta = unify [(t, s)] in
+              let rec subst_goal g = match g with
+                | [] -> []
+                | (f, t)::ts -> (nflag, (ty_subst theta t)) :: (subst_goal ts)
+              in
+              (* ここ gの後ろの要素を追加しなくていいのか？ *)
+              (Queue.push ((subst_goal tg), compose theta sigma) q;
+               loop xs)
+            with
+            TyError -> (loop xs)
+        in (loop rules; false))
+
 
 let rec search rls env q =
   if Queue.is_empty q

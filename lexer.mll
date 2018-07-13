@@ -13,6 +13,7 @@ rule main = parse
 | ","          { Parser.COMMA }
 | "."          { Parser.DOT }
 | "assert"     { Parser.ASSERT }
+| "\\+"        { Parser.NOT }
 | digit+ as n  { Parser.INT (int_of_string n) }
 | symid as id  { Parser.SYMID id }
 | varid as id  { Parser.VARID id }

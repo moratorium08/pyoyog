@@ -4,7 +4,13 @@ type term = (*EConstInt of int
           | EVar of string
           | EFunctor of string * (term list)
 
-type goal = term list
+type notflag = bool
+
+type predicate =
+  | PNot of predicate
+  | PPredicate of term
+
+type goal = predicate list
 
 (* factは長さ0のリストを持つruleにする *)
 type rule = term * goal
@@ -42,15 +48,22 @@ let rec print_terms terms = match terms with
     (print_term x;
      print_terms xs)
 
+let rec print_predicate p = match p with
+  | PNot p ->
+    (print_string "\\+";
+     print_predicate p)
+  | PPredicate t ->
+    print_term t
+
 
 let rec print_goal g = match g with
   | [] -> ()
   | x::(y::xs) ->
-    (print_term x;
+    (print_predicate x;
      print_string ", ";
      print_goal (y::xs))
   | x::xs ->
-    (print_term x;
+    (print_predicate x;
      print_goal xs)
 
 let print_rule (p, g) =

@@ -9,6 +9,7 @@
 %token <string> VARID
 %token OPAR CPAR DOT COMMA
 %token ARROW
+%token NOT
 %token ASSERT
 
 %start toplevel
@@ -21,8 +22,8 @@ toplevel:
 ;
 
 rule:
-  | predicate                   { ($1, []) }
-  | predicate ARROW goal        { ($1, $3) }
+  | term                        { ($1, []) }
+  | term ARROW goal             { ($1, $3) }
 ;
 
 goal:
@@ -31,8 +32,9 @@ goal:
 ;
 
 predicate:
-  | pname OPAR terms CPAR            { EFunctor($1, $3) }
-  | pname                           { EConstSym($1) }
+  | NOT predicate           { PNot $2 }
+  | pname OPAR terms CPAR   { PPredicate (EFunctor($1, $3)) }
+  | pname                   { PPredicate (EConstSym($1)) }
 ;
 
 terms:
