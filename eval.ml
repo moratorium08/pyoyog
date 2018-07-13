@@ -4,10 +4,16 @@ open ConstraintSolver
 open Rules
 
 
+type eval_result =
+  | ESucceeded
+  | EFailure
+
+exception NotButMatch
+
 let eval_goal rls env g q sigma =
   let rules = rls.rules in
   if List.length g = 0 then
-    true
+    ESucceeded
   else
     (* goalの先頭を取り出して、rulesからunifiableな
      * ものを探す。
@@ -36,8 +42,50 @@ let eval_goal rls env g q sigma =
                loop xs)
             with
             TyError -> (loop xs)
-        in (loop rules; false))
-
+        in (loop rules; EFailure))
+    | TNot ->
+      let rec loop_ret x ret = match ret with
+          | [] -> []
+          | y::ys -> (x::y)::(loop_ret x ys)
+      in
+      let rec loop_goal g ret = match g with
+          | [] -> ret
+          | x::xs -> loop_goal xs (loop_ret x ret)
+      in
+      let rec loop_rules l ret sigma = match l with
+          | [] -> (ret, sigma)
+          | x::xs ->
+            let ((s, tg), env) = rule2trule [] x in
+            try
+              let theta = unify [(t, s)] in
+              let rec subst_goal g = match g with
+                | [] -> []
+                | (f, t)::ts -> (nflag, (ty_subst theta t)) :: (subst_goal ts)
+              in
+              let g = subst_goal tg in
+              (* not だがfactにmatchしてしまった *)
+              if List.length g = 0 then
+                raise NotButMatch
+              else
+                let new_theta = compose theta sigma in
+                let new_ret = loop_goal g ret in
+                loop_rules xs new_ret new_theta
+            with
+              TyError -> (loop_rules xs ret sigma)
+      in
+      let rec add_q l sigma q = match l with
+        | [] -> ()
+        | x::xs ->
+          (Queue.push (x, sigma) q)
+      in
+      try
+        let (ret, sigma) = loop_rules rules [] [] in
+        if List.length ret = 0 then
+          (Queue.clear q; ESucceeded)
+        else
+          (add_q ret sigma q; EFailure)
+      with
+        NotButMatch -> EFailure
 
 let rec search rls env q =
   if Queue.is_empty q
@@ -45,9 +93,10 @@ let rec search rls env q =
     None
   else
     let (g, theta) = Queue.take q in
-    if eval_goal rls env g q theta then
+    match eval_goal rls env g q theta with
+    | ESucceeded ->
       Some theta
-    else
+    | EFailure ->
       search rls env q
 
 let gen_queue l =
