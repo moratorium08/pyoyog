@@ -10,6 +10,31 @@ type eval_result =
 
 exception NotButMatch
 
+let edebug_flag = false
+
+let edebug_msg s =
+  if edebug_flag then
+    (print_string s;
+    print_string "\n")
+  else
+    ()
+
+let rec contains_var t = match t with
+  | TySym _ -> false
+  | TyVar _ -> true
+  | TyFun (s, t) ->
+    let rec inner l = match l with
+      | [] -> true
+      | x::xs -> (contains_var x) && (inner xs)
+    in inner t
+
+let rec no_var_goals l = match l with
+  | [] -> true
+  | (f, x)::xs -> match f with
+    | TNone -> false
+    | _ ->
+    (contains_var x) && (no_var_goals xs)
+
 let eval_goal rls env g q sigma =
   let rules = rls.rules in
   if List.length g = 0 then
@@ -40,10 +65,10 @@ let eval_goal rls env g q sigma =
               in
               (* ここ gの後ろの要素を追加しなくていいのか？ *)
               ((if List.length tg = 0 then
-                print_string "tg is 0\n"
+                edebug_msg "tg is 0"
                else
                  ());
-              (Queue.push (after @ (subst_goal tg), compose theta sigma) q;
+              (Queue.push ((subst_goal after) @ (subst_goal tg), compose theta sigma) q;
                loop xs))
             with
             TyError -> (loop xs)
@@ -74,7 +99,7 @@ let eval_goal rls env g q sigma =
               (* not だがfactにmatchしてしまった *)
               if List.length g = 0 then
                 (
-                print_string "g is 0";
+                edebug_msg "g is 0";
                 raise NotButMatch)
               else
                 let new_theta = compose theta sigma in
@@ -89,11 +114,18 @@ let eval_goal rls env g q sigma =
           ((Queue.push (x, sigma) q); add_q xs sigma q)
       in
       try
-        let (ret, sigma) = loop_rules rules [after] [] in
-        if List.length ret = 0 then
-          (print_string "not found\n"; Queue.clear q; ESucceeded)
+        if contains_var t then
+          ((*print_type (ty_subst sigma t);*)
+          if no_var_goals after then
+            (edebug_msg "no no-var goals"; EFailure)
+          else
+            (edebug_msg "there is var goals"; (Queue.push (after @ [(nflag, t)], sigma) q); EFailure))
         else
-          (add_q ret sigma q; EFailure)
+          let (ret, sigma) = loop_rules rules [after] [] in
+          if List.length ret = 0 then
+            (edebug_msg "not found"; Queue.clear q; ESucceeded)
+          else
+            (add_q ret sigma q; EFailure)
       with
         NotButMatch -> EFailure
 
