@@ -23,6 +23,7 @@ let eval_goal rls env g q sigma =
      * 一つも見つからなければfail
      *)
     let (nflag, t)  = List.hd g in
+    let after = List.tl g in
     match nflag with
     | TNone
     | TDoubleNot ->
@@ -35,11 +36,15 @@ let eval_goal rls env g q sigma =
               let theta = unify [(t, s)] in
               let rec subst_goal g = match g with
                 | [] -> []
-                | (f, t)::ts -> (nflag, (ty_subst theta t)) :: (subst_goal ts)
+                | (f, t)::ts -> (f, (ty_subst theta t)) :: (subst_goal ts)
               in
               (* ここ gの後ろの要素を追加しなくていいのか？ *)
-              (Queue.push ((subst_goal tg), compose theta sigma) q;
-               loop xs)
+              ((if List.length tg = 0 then
+                print_string "tg is 0\n"
+               else
+                 ());
+              (Queue.push (after @ (subst_goal tg), compose theta sigma) q;
+               loop xs))
             with
             TyError -> (loop xs)
         in (loop rules; EFailure))
@@ -60,12 +65,17 @@ let eval_goal rls env g q sigma =
               let theta = unify [(t, s)] in
               let rec subst_goal g = match g with
                 | [] -> []
-                | (f, t)::ts -> (nflag, (ty_subst theta t)) :: (subst_goal ts)
+                | (f, t)::ts ->
+                  match f with
+                  | TNot -> (TDoubleNot, (ty_subst theta t)) :: (subst_goal ts)
+                  | _ -> (nflag, (ty_subst theta t)) :: (subst_goal ts)
               in
               let g = subst_goal tg in
               (* not だがfactにmatchしてしまった *)
               if List.length g = 0 then
-                raise NotButMatch
+                (
+                print_string "g is 0";
+                raise NotButMatch)
               else
                 let new_theta = compose theta sigma in
                 let new_ret = loop_goal g ret in
@@ -76,12 +86,12 @@ let eval_goal rls env g q sigma =
       let rec add_q l sigma q = match l with
         | [] -> ()
         | x::xs ->
-          (Queue.push (x, sigma) q)
+          ((Queue.push (x, sigma) q); add_q xs sigma q)
       in
       try
-        let (ret, sigma) = loop_rules rules [] [] in
+        let (ret, sigma) = loop_rules rules [after] [] in
         if List.length ret = 0 then
-          (Queue.clear q; ESucceeded)
+          (print_string "not found\n"; Queue.clear q; ESucceeded)
         else
           (add_q ret sigma q; EFailure)
       with
