@@ -63,7 +63,6 @@ let eval_goal rls env g q sigma =
                 | [] -> []
                 | (f, t)::ts -> (f, (ty_subst theta t)) :: (subst_goal ts)
               in
-              (* ここ gの後ろの要素を追加しなくていいのか？ *)
               ((if List.length tg = 0 then
                 edebug_msg "tg is 0"
                else
@@ -121,7 +120,7 @@ let eval_goal rls env g q sigma =
           else
             (edebug_msg "there is var goals"; (Queue.push (after @ [(nflag, t)], sigma) q); EFailure))
         else
-          let (ret, sigma) = loop_rules rules [after] [] in
+          let (ret, sigma) = loop_rules rules [after] sigma in
           if List.length ret = 0 then
             (edebug_msg "not found"; Queue.clear q; ESucceeded)
           else
