@@ -54,6 +54,30 @@ let rec term2ty env t =
   in
   inner env t
 
+let rec eq_type t s env = match (t, s) with
+  | (TySym a, TySym b) when a = b -> (true, env)
+  | (TyVar x, TyVar y) ->
+      (try
+        let y' = List.assoc x env in
+        (y = y', env)
+      with
+        Not_found ->
+        (true, (x, y) :: env))
+  | (TyFun (s1, f), TyFun (s2, g)) ->
+    if List.length f <> List.length g ||
+       s1 <> s2 then
+      (false, env)
+    else
+      let rec inner l r env = match (l, r) with
+        | ([], []) -> (true, env)
+        | (x::xs, y::ys) ->
+          let (a, env) = eq_type x y env in
+          let (b, env) = inner xs ys env in
+              (a && b, env)
+        | _ -> (false, env)
+      in inner f g env
+  | _ -> (false, env)
+
 
 let rec print_env env = match env with
   | [] -> ()
@@ -81,6 +105,13 @@ let rec ty2term env t = match t with
        EFunctor(s, vl)
       )
 
+let is_opposite f f' = match (f, f') with
+  | (TNone, TNot)
+  | (TNot, TNone)
+  | (TDoubleNot, TNot)
+  | (TNot, TDoubleNot)
+    -> true
+  | _ -> false
 
 (*let rec tgoal2goal env g = match g with
   | [] -> []
@@ -152,6 +183,7 @@ let rec print_tpredicate p = match p with
 let rec print_tgoal g = match g with
   | [] -> ()
   | x::xs -> (print_tpredicate x; print_tgoal xs)
+
 
 let rec print_trule (t, g) =
   (print_type t;

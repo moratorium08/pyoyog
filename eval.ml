@@ -128,12 +128,59 @@ let eval_goal rls env g q sigma =
       with
         NotButMatch -> EFailure
 
+
+(* goalとqueueを受け取って、
+ * queueを舐め、
+ * 書き換えたgoalとqueueを返す *)
+
+let rec contract_middle g q r =
+  (* g g' : 引数となるgoal
+   * h h' : notをcontractionしていった結果
+  *)
+  let rec reverse l r = match l with
+    | [] -> r
+    | x::xs -> reverse xs (x::r)
+  in
+  let rec inner g g' h h' env = match (g, g') with
+    | ([], []) -> Some(reverse h [], reverse h' [])
+    | ((fx, x)::xs, (fy, y)::ys) ->
+      let (a, env) = eq_type x y env in
+      if a then
+        (if is_opposite fx fy then
+          inner xs ys h h' env
+        else
+          inner xs ys ((fx, x) :: h) ((fy, y) :: h') env
+       )
+      else
+        None
+    | _ -> None
+  in
+
+  if Queue.is_empty q then
+      (g, r)
+  else
+    let (g', theta) = Queue.take q in
+    if List.length g <> List.length g' then
+      (Queue.push (g', theta) r;
+      contract_middle g q r)
+    else
+      match inner g g' [] [] [] with
+      | Some(g, g') ->
+      (Queue.push (g', theta) r;
+       contract_middle g q r)
+      | None ->
+      (Queue.push (g', theta) r;
+      contract_middle g q r)
+
 let rec search rls env q =
   if Queue.is_empty q
   then
     None
   else
     let (g, theta) = Queue.take q in
+    let q' = Queue.copy q in
+    let _ = Queue.clear q in
+    let (g, q) = contract_middle g q' q in
     match eval_goal rls env g q theta with
     | ESucceeded ->
       Some theta

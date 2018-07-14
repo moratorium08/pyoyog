@@ -31,4 +31,6 @@ val term2ty : env -> term -> ty * env
 val rule2trule : env -> rule -> trule * env
 val goal2tgoal : env -> goal -> tgoal * env
 val ty2term: env -> ty -> term
+val eq_type: ty -> ty -> (tyvar * tyvar) list -> bool * ((tyvar * tyvar) list)
+val is_opposite: tynot -> tynot -> bool
 (*val tgoal2goal: env -> tpredicate list -> goal*)
