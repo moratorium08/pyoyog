@@ -16,6 +16,9 @@ let rec read_eval_print rls env =
      | Rule -> print_string "true\n"
      | Found (s, q) ->
        ((print_solution s);
+        if List.length s = 0 || Queue.is_empty q then
+          ()
+        else
           (let c = read_line () in
            if c = ";" then
              (let rec inner q = match search_solution rls' env' q with
@@ -23,12 +26,15 @@ let rec read_eval_print rls env =
                  | (_, _, Rule) -> print_string "true\n"
                  | (_, _, Found(s, q)) ->
                    ((print_solution s);
-                  (let c = read_line () in
-                   if c = ";" then
-                    inner q
-                   else
-                     ()
-                   ))
+                    if List.length s = 0 || Queue.is_empty q then
+                      ()
+                    else
+                      (let c = read_line () in
+                       if c = ";" then
+                        inner q
+                       else ()
+                       )
+                   )
               in inner q
              )
            else

@@ -121,6 +121,8 @@ let eval_goal rls env g q sigma =
             (edebug_msg "there is var goals"; (Queue.push (after @ [(nflag, t)], sigma) q); EFailure))
         else
           let (ret, sigma) = loop_rules rules [after] sigma in
+          (* 否定がtrueになるのは、unifiableな別のルールを探したが
+           * 見つからなかった時*)
           if List.length ret = 0 then
             (edebug_msg "not found"; Queue.clear q; ESucceeded)
           else
@@ -141,15 +143,18 @@ let rec contract_middle g q r =
     | [] -> r
     | x::xs -> reverse xs (x::r)
   in
-  let rec inner g g' h h' env = match (g, g') with
+  let rec inner f g g' h h' env = match (g, g') with
     | ([], []) -> Some(reverse h [], reverse h' [])
     | ((fx, x)::xs, (fy, y)::ys) ->
       let (a, env) = eq_type x y env in
       if a then
         (if is_opposite fx fy then
-          inner xs ys h h' env
+           if f then
+             None
+           else
+            inner true xs ys h h' env
         else
-          inner xs ys ((fx, x) :: h) ((fy, y) :: h') env
+          inner f xs ys ((fx, x) :: h) ((fy, y) :: h') env
        )
       else
         None
@@ -164,7 +169,7 @@ let rec contract_middle g q r =
       (Queue.push (g', theta) r;
       contract_middle g q r)
     else
-      match inner g g' [] [] [] with
+      match inner false g g' [] [] [] with
       | Some(g, g') ->
       (Queue.push (g', theta) r;
        contract_middle g q r)
